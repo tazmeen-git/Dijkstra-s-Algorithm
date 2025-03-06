@@ -1,0 +1,105 @@
+import heapq
+import random
+import networkx as nx
+import matplotlib.pyplot as plt
+
+class Graph:
+    def __init__(self, num_nodes):
+        self.num_nodes = num_nodes
+        self.adj_list = {i: [] for i in range(num_nodes)}
+
+    def add_edge(self, u, v, weight):
+        self.adj_list[u].append((v, weight))
+        self.adj_list[v].append((u, weight)) # For undirected graph
+
+    def dijkstra(self, start, end, charging_points):
+        # Priority queue to store (distance, node)
+        pq = [(0, start)]
+        distances = {node: float('inf') for node in range(self.num_nodes)}
+        distances[start] = 0
+        previous_nodes = {node: None for node in range(self.num_nodes)}
+
+        while pq:
+            current_distance, current_node = heapq.heappop(pq)
+
+            if current_distance > distances[current_node]:
+                continue
+
+            for neighbor, weight in self.adj_list[current_node]:
+                distance = current_distance + weight
+
+                if distance < distances[neighbor]:
+                    distances[neighbor] = distance
+                    previous_nodes[neighbor] = current_node
+                    heapq.heappush(pq, (distance, neighbor))
+
+        # Reconstruct the shortest path
+        path = []
+        current_node = end
+        while current_node is not None:
+            path.append(current_node)
+            current_node = previous_nodes[current_node]
+        path.reverse()
+
+        # Add charging points to the path
+        full_path = []
+        for node in path:
+            full_path.append(node)
+            if node in charging_points:
+                full_path.append("Charging Point")
+
+        return full_path, distances[end], path
+
+def create_random_graph(num_nodes, num_edges):
+    graph = Graph(num_nodes)
+    edges = set()
+
+    while len(edges) < num_edges:
+        u = random.randint(0, num_nodes - 1)
+        v = random.randint(0, num_nodes - 1)
+        if u != v and (u, v) not in edges and (v, u) not in edges:
+            weight = random.randint(1, 10) # Random weight between 1 and 10
+            graph.add_edge(u, v, weight)
+            edges.add((u, v))
+
+    return graph
+
+def visualize_graph(graph, path):
+    G = nx.Graph()
+
+    # Add edges to the NetworkX graph
+    for u in graph.adj_list:
+        for v, weight in graph.adj_list[u]:
+            G.add_edge(u, v, weight=weight)
+
+    # Use a circular layout for the entire graph
+    pos = nx.spring_layout(G, k=0.5, iterations=20) # You can also use circular_layout
+
+    # Draw the entire graph
+    plt.figure(figsize=(12, 8)) # Increase figure size
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=300, font_size=10, font_color='black')
+
+    # Highlight the shortest path
+    path_edges = [(path[i], path[i + 1]) for i in range(len(path) - 1)]
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=2)
+
+    plt.title("Graph Visualization with Shortest Path")
+    plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    num_nodes = 200 # Set to 2000 nodes
+    num_edges = 500# Adjust based on desired density
+    graph = create_random_graph(num_nodes, num_edges)
+
+    # Define source, destination, and charging points
+    source = 0
+    destination = 178 # Set destination to 1786
+    charging_points = {2, 5, 8, 100, 500, 1000, 1500} # Example charging points
+
+    path, distance, actual_path = graph.dijkstra(source, destination, charging_points)
+    print("Shortest path with charging points:", path)
+    print("Total distance:", distance)
+
+    # Visualize the graph and the shortest path
+    visualize_graph(graph, actual_path)
